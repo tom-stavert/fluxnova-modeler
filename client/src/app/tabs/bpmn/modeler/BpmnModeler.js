@@ -29,6 +29,7 @@ import popupMenuTracking from 'bpmn-js-tracking/lib/features/popup-menu';
 import paletteTracking from 'bpmn-js-tracking/lib/features/palette';
 
 import { BpmnImprovedCanvasModule } from './features/improved-canvas';
+import adHocSubProcessRulesModule from './features/ad-hoc-subprocess-rules';
 
 import Flags, {
   DISABLE_ADJUST_ORIGIN,
@@ -79,6 +80,7 @@ const extensionModules = [
   propertiesPanelKeyboardBindingsModule,
   bpmnFormExtensionProviderModule,
   propPanelExtensionModule,
+  adHocSubProcessRulesModule,
   lintingAnnotationsModule,
   bpmnJSTracking,
   contextPadTracking,
