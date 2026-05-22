@@ -1,17 +1,15 @@
 'use strict';
 
 function getAgentConfig(bo) {
-  var extensionElements = bo.get('extensionElements');
+  const extensionElements = bo.get('extensionElements');
   if (!extensionElements) return null;
-  return extensionElements.get('values')
-    .find(function(v) { return v.$type === 'agent:Config'; }) || null;
+  return extensionElements.get('values').find(v => v.$type === 'agent:Config') || null;
 }
 
 function getAgentContext(bo) {
-  var extensionElements = bo.get('extensionElements');
+  const extensionElements = bo.get('extensionElements');
   if (!extensionElements) return null;
-  return extensionElements.get('values')
-    .find(function(v) { return v.$type === 'agent:Context'; }) || null;
+  return extensionElements.get('values').find(v => v.$type === 'agent:Context') || null;
 }
 
 function isAgenticSubprocess(bo) {
@@ -19,7 +17,7 @@ function isAgenticSubprocess(bo) {
 }
 
 function getContextVariables(bo) {
-  var context = getAgentContext(bo);
+  const context = getAgentContext(bo);
   return context ? (context.get('variables') || []) : [];
 }
 
@@ -30,7 +28,7 @@ function updateModdle(element, bo, modeling) {
 }
 
 function addAgentExtensions(bo, bpmnFactory) {
-  var extensionElements = bo.get('extensionElements');
+  let extensionElements = bo.get('extensionElements');
   if (!extensionElements) {
     extensionElements = bpmnFactory.create('bpmn:ExtensionElements', { values: [] });
     extensionElements.$parent = bo;
@@ -38,7 +36,7 @@ function addAgentExtensions(bo, bpmnFactory) {
   }
 
   if (!getAgentConfig(bo)) {
-    var config = bpmnFactory.create('agent:Config', {
+    const config = bpmnFactory.create('agent:Config', {
       provider: '', model: '', systemPrompt: ''
     });
     config.$parent = extensionElements;
@@ -46,29 +44,27 @@ function addAgentExtensions(bo, bpmnFactory) {
   }
 
   if (!getAgentContext(bo)) {
-    var context = bpmnFactory.create('agent:Context', { variables: [] });
+    const context = bpmnFactory.create('agent:Context', { variables: [] });
     context.$parent = extensionElements;
     extensionElements.get('values').push(context);
   }
 }
 
 function removeAgentExtensions(bo) {
-  var extensionElements = bo.get('extensionElements');
+  const extensionElements = bo.get('extensionElements');
   if (!extensionElements) return;
-  var values = extensionElements.get('values');
-  for (var i = values.length - 1; i >= 0; i--) {
-    if (values[i].$type === 'agent:Config' || values[i].$type === 'agent:Context') {
-      values.splice(i, 1);
-    }
-  }
+
+  const values   = extensionElements.get('values');
+  const filtered = values.filter(v => v.$type !== 'agent:Config' && v.$type !== 'agent:Context');
+  values.splice(0, values.length, ...filtered);
 }
 
 module.exports = {
-  isAgenticSubprocess: isAgenticSubprocess,
-  getAgentConfig: getAgentConfig,
-  getAgentContext: getAgentContext,
-  getContextVariables: getContextVariables,
-  updateModdle: updateModdle,
-  addAgentExtensions: addAgentExtensions,
-  removeAgentExtensions: removeAgentExtensions
+  isAgenticSubprocess,
+  getAgentConfig,
+  getAgentContext,
+  getContextVariables,
+  updateModdle,
+  addAgentExtensions,
+  removeAgentExtensions
 };

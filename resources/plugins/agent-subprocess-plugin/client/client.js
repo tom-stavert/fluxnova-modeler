@@ -1,12 +1,11 @@
 'use strict';
 
-var registerBpmnJSPlugin = require('camunda-modeler-plugin-helpers').registerBpmnJSPlugin;
-var registerBpmnJSModdleExtension = require('camunda-modeler-plugin-helpers').registerBpmnJSModdleExtension;
+const { registerBpmnJSPlugin, registerBpmnJSModdleExtension } = require('camunda-modeler-plugin-helpers');
 
-var AgentPaletteProvider = require('./provider/AgentPaletteProvider');
-var AgentReplaceMenuProvider = require('./provider/AgentReplaceMenuProvider');
-var AgentPropertiesProvider = require('./provider/AgentPropertiesProvider');
-var AgentOverlayProvider = require('./provider/AgentOverlayProvider');
+const AgentCreateAppendProvider = require('./provider/AgentCreateAppendProvider');
+const AgentReplaceMenuProvider  = require('./provider/AgentReplaceMenuProvider');
+const AgentPropertiesProvider   = require('./provider/AgentPropertiesProvider');
+const AgentOverlayProvider      = require('./provider/AgentOverlayProvider');
 
 console.log('[Agent Subprocess Plugin] client.js loaded');
 
@@ -20,8 +19,8 @@ registerBpmnJSModdleExtension({
       name: 'Config',
       superClass: ['Element'],
       properties: [
-        { name: 'provider', isAttr: true, type: 'String' },
-        { name: 'model', isAttr: true, type: 'String' },
+        { name: 'provider',     isAttr: true, type: 'String' },
+        { name: 'model',        isAttr: true, type: 'String' },
         { name: 'systemPrompt', isAttr: true, type: 'String' }
       ]
     },
@@ -44,15 +43,15 @@ registerBpmnJSModdleExtension({
 
 registerBpmnJSPlugin({
   __init__: [
-    'agentPaletteProvider',
+    'agentCreateAppendProvider',
     'agentReplaceMenuProvider',
     'agentPropertiesProvider',
     'agentOverlayProvider'
   ],
-  agentPaletteProvider: ['type', AgentPaletteProvider],
-  agentReplaceMenuProvider: ['type', AgentReplaceMenuProvider],
-  agentPropertiesProvider: ['type', AgentPropertiesProvider],
-  agentOverlayProvider: ['type', AgentOverlayProvider]
+  agentCreateAppendProvider: ['type', AgentCreateAppendProvider],
+  agentReplaceMenuProvider:  ['type', AgentReplaceMenuProvider],
+  agentPropertiesProvider:   ['type', AgentPropertiesProvider],
+  agentOverlayProvider:      ['type', AgentOverlayProvider]
 });
 
 console.log('[Agent Subprocess Plugin] Plugin registered');

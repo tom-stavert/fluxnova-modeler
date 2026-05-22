@@ -1,60 +1,80 @@
 'use strict';
 
-var domify = require('domify');
-var AgentUtil = require('../util/AgentUtil');
-var TEMPLATES = require('../templates');
+const domify   = require('domify');
+const AgentUtil = require('../util/AgentUtil');
+const TEMPLATES = require('../templates');
 
-var moddle = null;
+let moddle = null;
 
 function AgentPropertiesProvider(eventBus, modeling, bpmnFactory) {
   moddle = bpmnFactory;
-  var currentElement = null;
 
-  eventBus.on('selection.changed', function(e) {
-    removeCustomPanel();
-    var newSelection = e.newSelection;
+  // propertiesPanel.updated fires inside the BpmnPropertiesPanel Preact component's
+  // _update() helper on every selection.changed AND elements.changed event, carrying
+  // the newly-selected element as event.element. Crucially it fires just BEFORE the
+  // corresponding setState() call that triggers the Preact re-render, so we must
+  // defer our DOM injection until after Preact has flushed.
+  //
+  // (propertiesPanel.rendered, by contrast, only fires once – on root.added – and
+  //  is therefore useless for per-selection injection.)
+  //
+  // requestAnimationFrame() runs after all pending microtasks (including Preact's
+  // batched state flush) and before the browser paints, guaranteeing that
+  // .bio-properties-panel-container already contains the final DOM for the new
+  // element when we insert our panel as its first child.
+  let pendingRaf = null;
 
-    if (newSelection && newSelection.length === 1) {
-      currentElement = newSelection[0];
-      var bo = currentElement.businessObject;
-      if (currentElement.type === 'bpmn:AdHocSubProcess' && AgentUtil.isAgenticSubprocess(bo)) {
-        setTimeout(function() { injectCustomPanel(currentElement, modeling); }, 200);
-      }
-    } else {
-      currentElement = null;
+  eventBus.on('propertiesPanel.updated', (event) => {
+    const element = event.element;
+
+    // Cancel any injection scheduled for a previous update that hasn't fired yet.
+    if (pendingRaf !== null) {
+      cancelAnimationFrame(pendingRaf);
+      pendingRaf = null;
     }
-  });
 
-  eventBus.on('elements.changed', function(e) {
-    if (currentElement && e.elements.some(function(el) { return el.id === currentElement.id; })) {
-      if (AgentUtil.isAgenticSubprocess(currentElement.businessObject) && !document.getElementById('agent-custom-properties')) {
-        setTimeout(function() { injectCustomPanel(currentElement, modeling); }, 200);
-      }
+    if (!element || element.type !== 'bpmn:AdHocSubProcess' || !AgentUtil.isAgenticSubprocess(element.businessObject)) {
+      removeCustomPanel();
+      return;
     }
+
+    pendingRaf = requestAnimationFrame(() => {
+      pendingRaf = null;
+
+      // Skip re-injection when the panel is already present for this element so
+      // that focused inputs are not disrupted while the user is editing values.
+      const existing = document.getElementById('agent-custom-properties');
+      if (existing && existing.getAttribute('data-element-id') === element.id) {
+        return;
+      }
+
+      injectCustomPanel(element, modeling);
+    });
   });
 }
 
 AgentPropertiesProvider.$inject = ['eventBus', 'modeling', 'bpmnFactory'];
 
 function removeCustomPanel() {
-  var existing = document.getElementById('agent-custom-properties');
+  const existing = document.getElementById('agent-custom-properties');
   if (existing) existing.remove();
 }
 
 function injectCustomPanel(element, modeling) {
   removeCustomPanel();
 
-  var container = document.querySelector('.bio-properties-panel-scroll-container') ||
-    document.querySelector('[class*="properties-panel"]');
-
+  // bpmn-js-properties-panel v5 renders into a div.bio-properties-panel-container.
+  // The old .bio-properties-panel-scroll-container class does not exist in v5.
+  const container = document.querySelector('.bio-properties-panel-container');
   if (!container) return;
 
-  var bo = element.businessObject;
-  var agentConfig = AgentUtil.getAgentConfig(bo);
+  const bo = element.businessObject;
+  const agentConfig = AgentUtil.getAgentConfig(bo);
   if (!agentConfig) return;
 
-  var panel = domify(TEMPLATES.panel);
-  var fieldsContainer = panel.querySelector('.agent-fields-container');
+  const panel = domify(TEMPLATES.panel);
+  panel.setAttribute('data-element-id', element.id);
+  const fieldsContainer = panel.querySelector('.agent-fields-container');
 
   fieldsContainer.appendChild(createInputField(
     { label: 'Provider', prop: 'provider', placeholder: 'e.g. anthropic' },
@@ -77,67 +97,63 @@ function injectCustomPanel(element, modeling) {
 }
 
 function createInputField(field, element, agentConfig, modeling) {
-  var row = domify(TEMPLATES.inputField);
-  var label = row.querySelector('label');
-  var input = row.querySelector('input');
+  const row   = domify(TEMPLATES.inputField);
+  const label = row.querySelector('label');
+  const input = row.querySelector('input');
 
   label.textContent = field.label;
-  input.value = agentConfig.get(field.prop) || '';
+  input.value       = agentConfig.get(field.prop) || '';
   input.placeholder = field.placeholder || '';
 
-  input.addEventListener('change', function(e) {
-    var update = {};
-    update[field.prop] = e.target.value;
-    modeling.updateModdleProperties(element, agentConfig, update);
+  input.addEventListener('change', (e) => {
+    modeling.updateModdleProperties(element, agentConfig, { [field.prop]: e.target.value });
   });
 
   return row;
 }
 
 function createTextareaField(field, element, agentConfig, modeling) {
-  var row = domify(TEMPLATES.textareaField);
-  var label = row.querySelector('label');
-  var textarea = row.querySelector('textarea');
+  const row      = domify(TEMPLATES.textareaField);
+  const label    = row.querySelector('label');
+  const textarea = row.querySelector('textarea');
 
-  label.textContent = field.label;
-  textarea.value = agentConfig.get(field.prop) || '';
+  label.textContent    = field.label;
+  textarea.value       = agentConfig.get(field.prop) || '';
   textarea.placeholder = field.placeholder || '';
 
-  textarea.addEventListener('change', function(e) {
-    var update = {};
-    update[field.prop] = e.target.value;
-    modeling.updateModdleProperties(element, agentConfig, update);
+  textarea.addEventListener('change', (e) => {
+    modeling.updateModdleProperties(element, agentConfig, { [field.prop]: e.target.value });
   });
 
   return row;
 }
 
 function createVariablesList(element, bo, modeling) {
-  var container = domify(TEMPLATES.variablesContainer);
-  var addBtn = container.querySelector('.agent-btn-add');
-  var listContainer = container.querySelector('.agent-variables-list');
+  const container     = domify(TEMPLATES.variablesContainer);
+  const addBtn        = container.querySelector('.agent-btn-add');
+  const listContainer = container.querySelector('.agent-variables-list');
 
-  function render() {
+  const render = () => {
     listContainer.innerHTML = '';
-    var variables = AgentUtil.getContextVariables(bo);
+    const variables = AgentUtil.getContextVariables(bo);
 
     if (variables.length === 0) {
       listContainer.appendChild(domify(TEMPLATES.emptyVariables));
       return;
     }
 
-    variables.forEach(function(variable, index) {
-      var row = domify(TEMPLATES.variableRow);
-      var nameInput = row.querySelector('.agent-variable-name');
-      var removeBtn = row.querySelector('.agent-btn-remove');
+    variables.forEach((variable, index) => {
+      const row       = domify(TEMPLATES.variableRow);
+      const nameInput = row.querySelector('.agent-variable-name');
+      const removeBtn = row.querySelector('.agent-btn-remove');
 
       nameInput.value = variable.name || '';
-      nameInput.addEventListener('change', function(e) {
+      nameInput.addEventListener('change', (e) => {
         variable.name = e.target.value;
         AgentUtil.updateModdle(element, bo, modeling);
       });
 
-      removeBtn.addEventListener('click', function() {
+      removeBtn.addEventListener('click', () => {
         variables.splice(index, 1);
         AgentUtil.updateModdle(element, bo, modeling);
         render();
@@ -145,18 +161,18 @@ function createVariablesList(element, bo, modeling) {
 
       listContainer.appendChild(row);
     });
-  }
+  };
 
-  addBtn.addEventListener('click', function() {
-    var context = AgentUtil.getAgentContext(bo);
+  addBtn.addEventListener('click', () => {
+    let context = AgentUtil.getAgentContext(bo);
     if (!context) {
-      var extensionElements = bo.get('extensionElements');
+      const extensionElements = bo.get('extensionElements');
       context = moddle.create('agent:Context', { variables: [] });
       context.$parent = extensionElements;
       extensionElements.get('values').push(context);
     }
 
-    var newVar = moddle.create('agent:Variable', { name: '' });
+    const newVar = moddle.create('agent:Variable', { name: '' });
     newVar.$parent = context;
     context.get('variables').push(newVar);
 

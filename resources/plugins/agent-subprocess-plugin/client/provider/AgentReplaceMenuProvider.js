@@ -1,32 +1,43 @@
 'use strict';
 
-var AgentUtil = require('../util/AgentUtil');
+const domify    = require('domify');
+const AgentUtil = require('../util/AgentUtil');
+const TEMPLATES = require('../templates');
 
-function AgentReplaceMenuProvider(popupMenu, modeling, bpmnFactory, overlays) {
-  this._modeling = modeling;
+function AgentReplaceMenuProvider(popupMenu, modeling, bpmnFactory, bpmnReplace, overlays) {
+  this._modeling    = modeling;
   this._bpmnFactory = bpmnFactory;
-  this._overlays = overlays;
+  this._bpmnReplace = bpmnReplace;
+  this._overlays    = overlays;
   popupMenu.registerProvider('bpmn-replace', this);
 }
 
-AgentReplaceMenuProvider.$inject = ['popupMenu', 'modeling', 'bpmnFactory', 'overlays'];
+AgentReplaceMenuProvider.$inject = ['popupMenu', 'modeling', 'bpmnFactory', 'bpmnReplace', 'overlays'];
 
 AgentReplaceMenuProvider.prototype.getPopupMenuEntries = function(element) {
-  var modeling = this._modeling;
-  var bpmnFactory = this._bpmnFactory;
-  var overlays = this._overlays;
-  var bo = element.businessObject;
+  const { _modeling: modeling, _bpmnFactory: bpmnFactory, _bpmnReplace: bpmnReplace, _overlays: overlays } = this;
+  const bo = element.businessObject;
 
-  if (element.type !== 'bpmn:SubProcess' && element.type !== 'bpmn:AdHocSubProcess') {
+  const isSubProcess = element.type === 'bpmn:SubProcess';
+  const isAdHoc      = element.type === 'bpmn:AdHocSubProcess';
+
+  if (!isSubProcess && !isAdHoc) {
     return {};
   }
 
-  if (AgentUtil.isAgenticSubprocess(bo)) {
+  // Only offer the revert when the element is already a proper agentic
+  // ad-hoc subprocess (correct type AND extensions present).
+  //
+  // bpmn-js copies extensionElements when doing a standard type change, so a
+  // plain SubProcess can end up with agent:Config already attached. Showing
+  // the revert option there would hide the "Agentic Subprocess" promote path.
+  // Always show "Agentic Subprocess" for SubProcess regardless of extensions.
+  if (isAdHoc && AgentUtil.isAgenticSubprocess(bo)) {
     return {
       'replace-with-adhoc-subprocess': {
         label: 'Ad-Hoc Subprocess',
         className: 'bpmn-icon-subprocess-expanded',
-        action: function() {
+        action: () => {
           AgentUtil.removeAgentExtensions(bo);
           AgentUtil.updateModdle(element, bo, modeling);
           removeAgentOverlay(element, overlays);
@@ -39,25 +50,28 @@ AgentReplaceMenuProvider.prototype.getPopupMenuEntries = function(element) {
     'replace-with-agentic-subprocess': {
       label: 'Agentic Subprocess',
       className: 'bpmn-icon-agent-subprocess',
-      action: function() {
-        AgentUtil.addAgentExtensions(bo, bpmnFactory);
-        AgentUtil.updateModdle(element, bo, modeling);
-        setTimeout(function() {
-          addAgentOverlay(element, overlays);
-        }, 100);
+      action: () => {
+        let target = element;
+
+        if (isSubProcess) {
+          target = bpmnReplace.replaceElement(element, { type: 'bpmn:AdHocSubProcess' });
+        }
+
+        // addAgentExtensions is idempotent: it checks before creating, so
+        // extensions copied across by bpmnReplace are not duplicated.
+        AgentUtil.addAgentExtensions(target.businessObject, bpmnFactory);
+        AgentUtil.updateModdle(target, target.businessObject, modeling);
+        setTimeout(() => addAgentOverlay(target, overlays), 100);
       }
     }
   };
 };
 
 function addAgentOverlay(element, overlays) {
-  var domify = require('domify');
-  var TEMPLATES = require('../templates');
-
   if (!overlays) return;
   try {
     removeAgentOverlay(element, overlays);
-    var badge = domify(TEMPLATES.aiBadge);
+    const badge = domify(TEMPLATES.aiBadge);
     overlays.add(element, 'agent-ai-badge', {
       position: { top: 4, left: 4 },
       html: badge
@@ -70,7 +84,7 @@ function addAgentOverlay(element, overlays) {
 function removeAgentOverlay(element, overlays) {
   if (!overlays) return;
   try {
-    overlays.remove({ element: element, type: 'agent-ai-badge' });
+    overlays.remove({ element, type: 'agent-ai-badge' });
   } catch (err) {}
 }
 

@@ -1,26 +1,26 @@
 'use strict';
 
-var domify = require('domify');
-var AgentUtil = require('../util/AgentUtil');
-var TEMPLATES = require('../templates');
+const domify  = require('domify');
+const AgentUtil = require('../util/AgentUtil');
+const TEMPLATES = require('../templates');
 
 function AgentOverlayProvider(eventBus, overlays, elementRegistry) {
   this._overlays = overlays;
 
-  eventBus.on(['import.done', 'element.changed'], function(e) {
-    var element = e.element || null;
+  eventBus.on(['import.done', 'element.changed'], (e) => {
+    const element = e.element || null;
     if (!element || element.type !== 'bpmn:AdHocSubProcess') return;
 
-    var bo = element.businessObject;
+    const bo = element.businessObject;
     if (AgentUtil.isAgenticSubprocess(bo)) {
       removeAiOverlay(element, overlays);
-      setTimeout(function() { addAiOverlay(element, overlays); }, 50);
+      setTimeout(() => addAiOverlay(element, overlays), 50);
     }
   });
 
-  eventBus.on('import.done', function() {
-    setTimeout(function() {
-      elementRegistry.getAll().forEach(function(el) {
+  eventBus.on('import.done', () => {
+    setTimeout(() => {
+      elementRegistry.getAll().forEach((el) => {
         if (el.type === 'bpmn:AdHocSubProcess' && AgentUtil.isAgenticSubprocess(el.businessObject)) {
           addAiOverlay(el, overlays);
         }
@@ -36,7 +36,7 @@ function addAiOverlay(element, overlays) {
 
   try {
     removeAiOverlay(element, overlays);
-    var badge = domify(TEMPLATES.aiBadge);
+    const badge = domify(TEMPLATES.aiBadge);
 
     overlays.add(element, 'agent-ai-badge', {
       position: { top: 4, left: 4 },
@@ -50,7 +50,7 @@ function addAiOverlay(element, overlays) {
 function removeAiOverlay(element, overlays) {
   if (!overlays) return;
   try {
-    overlays.remove({ element: element, type: 'agent-ai-badge' });
+    overlays.remove({ element, type: 'agent-ai-badge' });
   } catch (err) {}
 }
 

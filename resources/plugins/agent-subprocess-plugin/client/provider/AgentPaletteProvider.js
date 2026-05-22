@@ -1,6 +1,6 @@
 'use strict';
 
-var AgentUtil = require('../util/AgentUtil');
+const AgentUtil = require('../util/AgentUtil');
 
 function AgentPaletteProvider(palette, create, elementFactory, bpmnFactory) {
   this._create = create;
@@ -12,9 +12,17 @@ function AgentPaletteProvider(palette, create, elementFactory, bpmnFactory) {
 AgentPaletteProvider.$inject = ['palette', 'create', 'elementFactory', 'bpmnFactory'];
 
 AgentPaletteProvider.prototype.getPaletteEntries = function() {
-  var create = this._create;
-  var elementFactory = this._elementFactory;
-  var bpmnFactory = this._bpmnFactory;
+  const { _create: create, _elementFactory: elementFactory, _bpmnFactory: bpmnFactory } = this;
+
+  const createAgenticSubprocess = (event) => {
+    const shape = elementFactory.createShape({
+      type: 'bpmn:AdHocSubProcess',
+      isExpanded: true
+    });
+
+    AgentUtil.addAgentExtensions(shape.businessObject, bpmnFactory);
+    create.start(event, shape);
+  };
 
   return {
     'create.agentic-subprocess': {
@@ -27,16 +35,6 @@ AgentPaletteProvider.prototype.getPaletteEntries = function() {
       }
     }
   };
-
-  function createAgenticSubprocess(event) {
-    var shape = elementFactory.createShape({
-      type: 'bpmn:AdHocSubProcess',
-      isExpanded: true
-    });
-
-    AgentUtil.addAgentExtensions(shape.businessObject, bpmnFactory);
-    create.start(event, shape);
-  }
 };
 
 module.exports = AgentPaletteProvider;
