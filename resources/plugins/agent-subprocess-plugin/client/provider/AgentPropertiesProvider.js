@@ -1,13 +1,11 @@
 'use strict';
 
-const domify   = require('domify');
+const domify = require('domify');
 const AgentUtil = require('../util/AgentUtil');
 const TEMPLATES = require('../templates');
 
-let moddle = null;
-
 function AgentPropertiesProvider(eventBus, modeling, bpmnFactory) {
-  moddle = bpmnFactory;
+  const moddle = bpmnFactory;
 
   // propertiesPanel.updated fires inside the BpmnPropertiesPanel Preact component's
   // _update() helper on every selection.changed AND elements.changed event, carrying
@@ -33,7 +31,11 @@ function AgentPropertiesProvider(eventBus, modeling, bpmnFactory) {
       pendingRaf = null;
     }
 
-    if (!element || element.type !== 'bpmn:AdHocSubProcess' || !AgentUtil.isAgenticSubprocess(element.businessObject)) {
+    if (
+      !element ||
+      element.type !== 'bpmn:AdHocSubProcess' ||
+      !AgentUtil.isAgenticSubprocess(element.businessObject)
+    ) {
       removeCustomPanel();
       return;
     }
@@ -48,7 +50,7 @@ function AgentPropertiesProvider(eventBus, modeling, bpmnFactory) {
         return;
       }
 
-      injectCustomPanel(element, modeling);
+      injectCustomPanel(element, modeling, moddle);
     });
   });
 }
@@ -60,7 +62,7 @@ function removeCustomPanel() {
   if (existing) existing.remove();
 }
 
-function injectCustomPanel(element, modeling) {
+function injectCustomPanel(element, modeling, moddle) {
   removeCustomPanel();
 
   // bpmn-js-properties-panel v5 renders into a div.bio-properties-panel-container.
@@ -76,61 +78,83 @@ function injectCustomPanel(element, modeling) {
   panel.setAttribute('data-element-id', element.id);
   const fieldsContainer = panel.querySelector('.agent-fields-container');
 
-  fieldsContainer.appendChild(createInputField(
-    { label: 'Provider', prop: 'provider', placeholder: 'e.g. anthropic' },
-    element, agentConfig, modeling
-  ));
+  fieldsContainer.appendChild(
+    createInputField(
+      { label: 'Provider', prop: 'provider', placeholder: 'e.g. anthropic' },
+      element,
+      agentConfig,
+      modeling
+    )
+  );
 
-  fieldsContainer.appendChild(createInputField(
-    { label: 'Model', prop: 'model', placeholder: 'e.g. claude-sonnet-4-6' },
-    element, agentConfig, modeling
-  ));
+  fieldsContainer.appendChild(
+    createInputField(
+      { label: 'Model', prop: 'model', placeholder: 'e.g. claude-sonnet-4-6' },
+      element,
+      agentConfig,
+      modeling
+    )
+  );
 
-  fieldsContainer.appendChild(createTextareaField(
-    { label: 'System Prompt', prop: 'systemPrompt', placeholder: 'Instructions for the LLM agent...' },
-    element, agentConfig, modeling
-  ));
+  fieldsContainer.appendChild(
+    createTextareaField(
+      {
+        label: 'System Prompt',
+        prop: 'systemPrompt',
+        placeholder: 'Instructions for the LLM agent...',
+      },
+      element,
+      agentConfig,
+      modeling
+    )
+  );
 
-  fieldsContainer.appendChild(createVariablesList(element, bo, modeling));
+  fieldsContainer.appendChild(
+    createVariablesList(element, bo, modeling, moddle)
+  );
 
   container.insertBefore(panel, container.firstChild);
 }
 
 function createInputField(field, element, agentConfig, modeling) {
-  const row   = domify(TEMPLATES.inputField);
+  const row = domify(TEMPLATES.inputField);
   const label = row.querySelector('label');
   const input = row.querySelector('input');
 
   label.textContent = field.label;
-  input.value       = agentConfig.get(field.prop) || '';
+  input.value = agentConfig.get(field.prop) || '';
   input.placeholder = field.placeholder || '';
 
   input.addEventListener('change', (e) => {
-    modeling.updateModdleProperties(element, agentConfig, { [field.prop]: e.target.value });
+    modeling.updateModdleProperties(element, agentConfig, {
+      [field.prop]: e.target.value,
+    });
   });
 
   return row;
 }
 
 function createTextareaField(field, element, agentConfig, modeling) {
-  const row      = domify(TEMPLATES.textareaField);
-  const label    = row.querySelector('label');
+  const row = domify(TEMPLATES.textareaField);
+  const label = row.querySelector('label');
   const textarea = row.querySelector('textarea');
 
-  label.textContent    = field.label;
-  textarea.value       = agentConfig.get(field.prop) || '';
+  label.textContent = field.label;
+  textarea.value = agentConfig.get(field.prop) || '';
   textarea.placeholder = field.placeholder || '';
 
   textarea.addEventListener('change', (e) => {
-    modeling.updateModdleProperties(element, agentConfig, { [field.prop]: e.target.value });
+    modeling.updateModdleProperties(element, agentConfig, {
+      [field.prop]: e.target.value,
+    });
   });
 
   return row;
 }
 
-function createVariablesList(element, bo, modeling) {
-  const container     = domify(TEMPLATES.variablesContainer);
-  const addBtn        = container.querySelector('.agent-btn-add');
+function createVariablesList(element, bo, modeling, moddle) {
+  const container = domify(TEMPLATES.variablesContainer);
+  const addBtn = container.querySelector('.agent-btn-add');
   const listContainer = container.querySelector('.agent-variables-list');
 
   const render = () => {
@@ -143,7 +167,7 @@ function createVariablesList(element, bo, modeling) {
     }
 
     variables.forEach((variable, index) => {
-      const row       = domify(TEMPLATES.variableRow);
+      const row = domify(TEMPLATES.variableRow);
       const nameInput = row.querySelector('.agent-variable-name');
       const removeBtn = row.querySelector('.agent-btn-remove');
 
