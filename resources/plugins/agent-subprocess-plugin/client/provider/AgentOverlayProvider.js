@@ -5,31 +5,33 @@ const AgentUtil = require('../util/AgentUtil');
 const TEMPLATES = require('../templates');
 
 function AgentOverlayProvider(eventBus, overlays, elementRegistry) {
-  const syncOverlay = (element) => {
-    if (!element || element.type !== 'bpmn:AdHocSubProcess') {
-      return;
-    }
-
-    if (AgentUtil.isAgenticSubprocess(element.businessObject)) {
-      addAiOverlay(element, overlays);
-    } else {
-      removeAiOverlay(element, overlays);
-    }
-  };
-
   eventBus.on('import.done', () => {
-    elementRegistry.getAll().forEach(syncOverlay);
+    elementRegistry
+      .getAll()
+      .forEach((element) => syncOverlay(element, overlays));
   });
 
   eventBus.on('element.changed', (e) => {
-    syncOverlay(e.element || null);
+    syncOverlay(e.element || null, overlays);
   });
 
   eventBus.on('elements.changed', (e) => {
     const elements = e.elements || [];
 
-    elements.forEach(syncOverlay);
+    elements.forEach((element) => syncOverlay(element, overlays));
   });
+}
+
+function syncOverlay(element, overlays) {
+  if (!element || element.type !== 'bpmn:AdHocSubProcess') {
+    return;
+  }
+
+  if (AgentUtil.isAgenticSubprocess(element.businessObject)) {
+    addAiOverlay(element, overlays);
+  } else {
+    removeAiOverlay(element, overlays);
+  }
 }
 
 AgentOverlayProvider.$inject = ['eventBus', 'overlays', 'elementRegistry'];
