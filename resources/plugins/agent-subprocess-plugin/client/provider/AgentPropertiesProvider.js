@@ -4,9 +4,7 @@ const domify = require('domify');
 const AgentUtil = require('../util/AgentUtil');
 const TEMPLATES = require('../templates');
 
-function AgentPropertiesProvider(eventBus, modeling, bpmnFactory) {
-  const moddle = bpmnFactory;
-
+function AgentPropertiesProvider(eventBus, modeling, moddle) {
   // propertiesPanel.updated fires inside the BpmnPropertiesPanel Preact component's
   // _update() helper on every selection.changed AND elements.changed event, carrying
   // the newly-selected element as event.element. Crucially it fires just BEFORE the
@@ -55,7 +53,7 @@ function AgentPropertiesProvider(eventBus, modeling, bpmnFactory) {
   });
 }
 
-AgentPropertiesProvider.$inject = ['eventBus', 'modeling', 'bpmnFactory'];
+AgentPropertiesProvider.$inject = ['eventBus', 'modeling', 'moddle'];
 
 function removeCustomPanel() {
   const existing = document.getElementById('agent-custom-properties');
