@@ -10,9 +10,7 @@ function AgentOverlayProvider(eventBus, overlays, elementRegistry) {
       return;
     }
 
-    const bo = element.businessObject;
-
-    if (AgentUtil.isAgenticSubprocess(bo)) {
+    if (AgentUtil.isAgenticSubprocess(element.businessObject)) {
       addAiOverlay(element, overlays);
     } else {
       removeAiOverlay(element, overlays);
