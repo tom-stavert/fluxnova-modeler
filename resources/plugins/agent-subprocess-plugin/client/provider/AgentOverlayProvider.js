@@ -47,14 +47,18 @@ function addAiOverlay(element, overlays) {
       position: { top: 4, left: 4 },
       html: badge,
     });
-  } catch (err) {}
+  } catch (err) {
+    console.log('[Agent Subprocess Plugin] Error adding overlay:', err.message);
+  }
 }
 
 function removeAiOverlay(element, overlays) {
   if (!overlays) return;
   try {
     overlays.remove({ element, type: 'agent-ai-badge' });
-  } catch (err) {}
+  } catch (err) {
+    console.log('[Agent Subprocess Plugin] Error removing overlay:', err.message);
+  }
 }
 
 module.exports = AgentOverlayProvider;
